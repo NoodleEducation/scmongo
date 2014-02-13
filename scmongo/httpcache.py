@@ -25,7 +25,7 @@ class MongoCacheStorage(object):
 
     def close_spider(self, spider):
         del self.fs[spider]
-        self.db.close()
+        self.db.connection.disconnect()
 
     def retrieve_response(self, spider, request):
         gf = self._get_file(spider, request)
