@@ -30,17 +30,19 @@ class MongoCacheStorage(object):
     def retrieve_response(self, spider, request):
         gf = self._get_file(spider, request)
         if gf is None:
-            return # not cached
+            return  # not cached
         url = str(gf.url)
         status = str(gf.status)
-        headers = Headers([(x, map(str, y)) for x, y in gf.headers.iteritems()])
+        headers = Headers(
+            [(x, map(str, y)) for x, y in gf.headers.iteritems()]
+        )
         body = gf.read()
         respcls = responsetypes.from_args(headers=headers, url=url)
         response = respcls(url=url, headers=headers, status=status, body=body)
         return response
- 
+
     def store_response(self, spider, request, response):
-        key = spider.name + '/' + self._request_key(request)
+        key = self.request_key(spider, request)
         kwargs = {
             '_id': key,
             'time': time(),
@@ -54,15 +56,15 @@ class MongoCacheStorage(object):
             self.fs[spider].delete(key)
             self.fs[spider].put(response.body, **kwargs)
 
+    def request_key(self, spider, request):
+        return '%s/%s' % (spider.name, request_fingerprint(request))
+
     def _get_file(self, spider, request):
-        key = spider.name + '/' + self._request_key(request)
+        key = self.request_key(spider, request)
         try:
             gf = self.fs[spider].get(key)
         except errors.NoFile:
-            return # not found
+            return  # not found
         if 0 < self.expire < time() - gf.time:
-            return # expired
+            return  # expired
         return gf
-
-    def _request_key(self, request):
-        return request_fingerprint(request)
